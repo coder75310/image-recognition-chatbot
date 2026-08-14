@@ -68,7 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Error:', error);
-            appendMessage('bot', 'Sorry, an error occurred: ${error.message}');
+            // appendMessage('bot', 'Sorry, an error occurred: ${error.message}');
+            appendMessage('bot', `Sorry, an error occurred: ${error.message}`);
         } finally {
             toggleLoading(false);
         }
