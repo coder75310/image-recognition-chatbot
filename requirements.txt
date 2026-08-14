@@ -1,5 +1,4 @@
 Flask
 Pillow
-transformers
-torch
+openai
 gunicorn

@@ -1,35 +1,52 @@
+import base64
 import os
 from flask import Flask, render_template, request, jsonify
-from werkzeug.utils import secure_filename
+from openai import OpenAI
 from PIL import Image
-from transformers import BlipProcessor, BlipForConditionalGeneration
-import torch
 
 app = Flask(__name__)
 
-# Load the BLIP image-captioning model once when the service starts.
-processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-model.eval()
+HF_TOKEN = os.environ.get("HF_TOKEN")
+MODEL = os.environ.get("HF_MODEL", "Qwen/Qwen2.5-VL-3B-Instruct")
 
-UPLOAD_FOLDER = os.path.join("static", "uploads")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+client = OpenAI(
+    base_url="https://router.huggingface.co/v1",
+    api_key=HF_TOKEN,
+) if HF_TOKEN else None
 
 
-def get_caption_from_model(image_path):
-    try:
-        image = Image.open(image_path).convert("RGB")
-        inputs = processor(images=image, return_tensors="pt")
+def image_to_data_url(file_storage):
+    image = Image.open(file_storage).convert("RGB")
+    image.thumbnail((1024, 1024))
+    from io import BytesIO
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG", quality=85, optimize=True)
+    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return f"data:image/jpeg;base64,{encoded}"
 
-        with torch.no_grad():
-            outputs = model.generate(**inputs, max_length=50)
 
-        caption = processor.decode(outputs[0], skip_special_tokens=True)
-        return caption.capitalize()
+def answer_image_question(image_file, question):
+    if not client:
+        raise RuntimeError("HF_TOKEN is not configured on the server.")
 
-    except Exception as e:
-        print(f"Error generating caption: {e}")
-        return "Sorry, I encountered an error while analyzing the image."
+    image_url = image_to_data_url(image_file)
+    prompt = question or "Describe this image clearly and briefly."
+
+    completion = client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": image_url}},
+                ],
+            }
+        ],
+        max_tokens=200,
+    )
+
+    return completion.choices[0].message.content.strip()
 
 
 @app.route("/")
@@ -48,16 +65,17 @@ def ask():
         return jsonify({"error": "Missing image in the request."}), 400
 
     image_file = request.files["image"]
-
     if not image_file.filename:
         return jsonify({"error": "No image selected."}), 400
 
-    filename = secure_filename(image_file.filename)
-    image_path = os.path.join(UPLOAD_FOLDER, filename)
-    image_file.save(image_path)
+    question = request.form.get("question", "").strip()
 
-    caption = get_caption_from_model(image_path)
-    return jsonify({"answer": caption})
+    try:
+        answer = answer_image_question(image_file, question)
+        return jsonify({"answer": answer})
+    except Exception as exc:
+        print(f"Inference error: {exc}")
+        return jsonify({"error": "Unable to analyze the image right now. Please try again."}), 500
 
 
 if __name__ == "__main__":
