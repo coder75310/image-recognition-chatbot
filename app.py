@@ -18,7 +18,7 @@ logging.basicConfig(
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 VISION_MODEL = os.getenv(
     "HF_VISION_MODEL",
-    "Qwen/Qwen2.5-VL-3B-Instruct:featherless-ai"
+    "Qwen/Qwen2.5-VL-3B-Instruct"
 ).strip()
 CAPTION_MODEL = os.getenv(
     "HF_CAPTION_MODEL",
