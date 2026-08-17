@@ -1,52 +1,19 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conversational Image Chatbot 🤖</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conversational Image Chatbot</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1>Conversational Image Chatbot 🖼</h1>
-            <p>Upload an image and ask me anything about it!</p>
-        </header>
-
-        <div class="chat-container">
-            <div class="image-preview-area">
-                <img id="imagePreview" src="#" alt="Your uploaded image will appear here." />
-                <label for="imageUpload" class="image-upload-label">
-                    <span>🖼 Choose an Image</span>
-                </label>
-                <input type="file" id="imageUpload" accept="image/*" required>
-            </div>
-            
-            <div class="chat-window">
-                <div id="chatBox">
-                    <div class="chat-message bot">
-                        <p>Hello! Please upload an image and ask a question below.</p>
-                    </div>
-                </div>
-                <div id="loadingIndicator" class="hidden">
-                    <div class="spinner"></div>
-                </div>
-                <form id="chatForm">
-                    <input type="text" id="questionInput" placeholder="Ask a question about the image..." required disabled>
-                    <button type="submit" id="sendButton" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
-                    </button>
-                </form>
-            </div>
-        </div>
-        <footer>
-            <p>Powered by Flask & Hugging Face Transformers</p>
-        </footer>
-    </div>
-
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+<body><main class="app">
+<header><h1>Conversational Image Chatbot 🤖</h1><p>Upload an image and ask me anything about it!</p></header>
+<section class="workspace">
+<div class="upload">
+<div class="preview"><span id="empty">Your image preview will appear here</span><img id="preview" alt="Selected image"></div>
+<label class="choose">Choose an Image<input id="image" type="file" accept="image/*" hidden></label>
+<div id="name"></div>
+</div>
+<div class="chat"><div id="messages"><div class="msg bot">Upload an image, then ask a question.</div></div>
+<form id="form"><input id="question" placeholder="Great! Now ask a question." autocomplete="off"><button>➤</button></form></div>
+</section><footer>Powered by Flask &amp; Hugging Face</footer>
+</main><script src="{{ url_for('static', filename='script.js') }}"></script></body></html>
