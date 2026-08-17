@@ -5,12 +5,11 @@ from io import BytesIO
 
 from flask import Flask, render_template, request, jsonify
 from PIL import Image, UnidentifiedImageError
-from huggingface_hub import InferenceClient
+from openai import OpenAI
 
 
 app = Flask(__name__)
 
-# Maximum upload size: 8 MB
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
 
@@ -30,20 +29,20 @@ logging.basicConfig(
 
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 
-# Featherless AI currently documents Kimi-K3 for VLM
-# / image chat completion.
 VISION_MODEL = os.getenv(
     "HF_VISION_MODEL",
-    "moonshotai/Kimi-K3"
+    "moonshotai/Kimi-K3:featherless-ai"
 ).strip()
 
 
-# Create Hugging Face client only when token exists
+# ---------------------------------------------------------
+# Hugging Face OpenAI-compatible client
+# ---------------------------------------------------------
+
 client = (
-    InferenceClient(
-        provider="featherless-ai",
-        api_key=HF_TOKEN,
-        timeout=120
+    OpenAI(
+        base_url="https://router.huggingface.co/v1",
+        api_key=HF_TOKEN
     )
     if HF_TOKEN
     else None
@@ -60,7 +59,7 @@ def index():
 
 
 # ---------------------------------------------------------
-# Convert uploaded image to data URL
+# Convert image to base64 data URL
 # ---------------------------------------------------------
 
 def make_data_url(data: bytes, mime: str) -> str:
@@ -77,7 +76,7 @@ def make_data_url(data: bytes, mime: str) -> str:
 
 
 # ---------------------------------------------------------
-# Extract text from Hugging Face response
+# Extract model answer
 # ---------------------------------------------------------
 
 def extract_answer(response) -> str:
@@ -87,15 +86,11 @@ def extract_answer(response) -> str:
             "The model returned no choices."
         )
 
-    message = response.choices[0].message
+    answer = response.choices[0].message.content
 
-    answer = message.content
-
-    # Normal string response
     if isinstance(answer, str):
         return answer.strip()
 
-    # Some models can return structured content
     if isinstance(answer, list):
 
         parts = []
@@ -140,11 +135,13 @@ def analyze_with_vision(
             "Hugging Face client could not be initialized."
         )
 
-    # Convert uploaded image to base64 data URL
-    image_url = make_data_url(data, mime)
+    image_url = make_data_url(
+        data,
+        mime
+    )
 
     logging.info(
-        "Sending image to Hugging Face model: %s",
+        "Sending image to model: %s",
         VISION_MODEL
     )
 
@@ -183,8 +180,8 @@ def analyze_with_vision(
                             "- colors and shapes\n\n"
 
                             "Do not invent information. "
-                            "If something cannot be read or identified "
-                            "clearly, say that it is unclear.\n\n"
+                            "If something cannot be read clearly, "
+                            "say that it is unclear.\n\n"
 
                             f"User question: {question}"
                         )
@@ -223,7 +220,6 @@ def analyze_with_vision(
 @app.post("/api/analyze")
 def analyze():
 
-    # Check image field
     if "image" not in request.files:
 
         return jsonify(
@@ -232,14 +228,12 @@ def analyze():
 
     uploaded = request.files["image"]
 
-    # Check filename
     if not uploaded.filename:
 
         return jsonify(
             error="Please choose an image."
         ), 400
 
-    # Read image
     data = uploaded.read()
 
     if not data:
@@ -248,13 +242,16 @@ def analyze():
             error="The uploaded image is empty."
         ), 400
 
+
     # -----------------------------------------------------
     # Validate image
     # -----------------------------------------------------
 
     try:
 
-        with Image.open(BytesIO(data)) as image:
+        with Image.open(
+            BytesIO(data)
+        ) as image:
 
             image.verify()
 
@@ -267,8 +264,9 @@ def analyze():
             error="Please upload a valid image file."
         ), 400
 
+
     # -----------------------------------------------------
-    # User question
+    # Question
     # -----------------------------------------------------
 
     question = (
@@ -281,8 +279,9 @@ def analyze():
         "text, and important details."
     )
 
+
     # -----------------------------------------------------
-    # Send to vision model
+    # Vision request
     # -----------------------------------------------------
 
     try:
@@ -298,6 +297,7 @@ def analyze():
             mode="vision"
         ), 200
 
+
     except Exception as error:
 
         logging.exception(
@@ -305,8 +305,6 @@ def analyze():
             error
         )
 
-        # Return actual error so it can be debugged
-        # without exposing the HF token.
         return jsonify(
             error=(
                 "Image analysis failed. "
@@ -346,7 +344,7 @@ def health():
 
 
 # ---------------------------------------------------------
-# Local development
+# Start application
 # ---------------------------------------------------------
 
 if __name__ == "__main__":
