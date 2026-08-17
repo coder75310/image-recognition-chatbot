@@ -27,7 +27,7 @@ CAPTION_MODEL = os.getenv(
 
 client = (
     InferenceClient(
-        provider="auto",
+        provider="featherless-ai",
         api_key=HF_TOKEN,
         timeout=90
     )
