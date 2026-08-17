@@ -34,7 +34,7 @@ HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 # / image chat completion.
 VISION_MODEL = os.getenv(
     "HF_VISION_MODEL",
-    "moonshotai/Kimi-K3:featherless-ai"
+    "moonshotai/Kimi-K3"
 ).strip()
 
 
