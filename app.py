@@ -78,38 +78,41 @@ def analyze_with_vision(data: bytes, mime: str, question: str) -> str:
             "Hugging Face client could not be initialized."
         )
 
+    image_url = make_data_url(data, mime)
+
     response = client.chat.completions.create(
         model=VISION_MODEL,
         messages=[
             {
-                "role": "system",
-                "content": (
-                    "You are a helpful image recognition assistant. "
-                    "Answer the user's question using only information "
-                    "reasonably visible or inferable from the image. "
-                    "If something is uncertain, say so."
-                ),
-            },
-            {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": question},
                     {
                         "type": "image_url",
                         "image_url": {
-                            "url": make_data_url(data, mime)
-                        },
+                            "url": image_url
+                        }
                     },
-                ],
-            },
+                    {
+                        "type": "text",
+                        "text": (
+                            "Look carefully at the uploaded image. "
+                            "Answer the user's question based only on "
+                            "what is visible in the image.\n\n"
+                            f"User question: {question}"
+                        )
+                    }
+                ]
+            }
         ],
-        max_tokens=180,
+        max_tokens=300
     )
 
     answer = extract_answer(response)
 
     if not answer:
-        raise RuntimeError("The vision model returned an empty response.")
+        raise RuntimeError(
+            "The vision model returned an empty response."
+        )
 
     return answer
 
